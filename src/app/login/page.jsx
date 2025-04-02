@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
@@ -18,21 +18,22 @@ export default function LoginPage() {
       email,
       password,
     });
+
     if (error) {
-      setError("Credenciales incorrectas.");
+      setError("Correo o contraseña incorrectos.");
     } else {
       router.push("/");
     }
   };
 
   useEffect(() => {
-    const checkUser = async () => {
+    const checkSession = async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         router.push("/");
       }
     };
-    checkUser();
+    checkSession();
   }, [router, supabase]);
 
   return (
