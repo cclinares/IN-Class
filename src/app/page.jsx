@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const supabase = createClientComponentClient();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState(null); // ✅ sin `: any`
   const router = useRouter();
 
   useEffect(() => {
