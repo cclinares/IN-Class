@@ -27,7 +27,7 @@ export default function LoginPage() {
     if (error) {
       setError('Credenciales inválidas o usuario no encontrado.');
     } else {
-      router.push('/dashboard'); // Cambia esto según tu ruta de inicio
+      router.push('/dashboard'); // Cambiar por ruta real
     }
   };
 
