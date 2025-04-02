@@ -1,67 +1,76 @@
-﻿'use client'
+﻿'use client';
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleAuth = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
 
-    let result
-    if (isRegistering) {
-      result = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      setError('Credenciales inválidas o usuario no encontrado.');
     } else {
-      result = await supabase.auth.signInWithPassword({ email, password })
+      router.push('/dashboard'); // Cambia esto según tu ruta de inicio
     }
-
-    if (result.error) {
-      alert('Error: ' + result.error.message)
-    } else {
-      alert(isRegistering ? 'Registro exitoso. Revisa tu correo.' : 'Inicio de sesión correcto.')
-      router.push('/')
-    }
-
-    setLoading(false)
-  }
+  };
 
   return (
-    <div style={{ maxWidth: 400, margin: '0 auto', paddingTop: 50 }}>
-      <h1>{isRegistering ? 'Registrarse' : 'Iniciar sesión'}</h1>
-      <form onSubmit={handleAuth}>
-        <input
-          type="email"
-          placeholder="Correo institucional"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: 10, width: '100%', marginBottom: 10 }}
-        />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: 10, width: '100%', marginBottom: 10 }}
-        />
-        <button type="submit" disabled={loading} style={{ padding: 10, width: '100%' }}>
-          {loading ? 'Cargando...' : isRegistering ? 'Registrarse' : 'Iniciar sesión'}
-        </button>
-      </form>
-      <p style={{ marginTop: 20 }}>
-        {isRegistering ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}{' '}
-        <button onClick={() => setIsRegistering(!isRegistering)} style={{ border: 'none', background: 'none', color: 'cyan', cursor: 'pointer' }}>
-          {isRegistering ? 'Iniciar sesión' : 'Registrarse'}
-        </button>
-      </p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="max-w-md w-full bg-white p-8 shadow-lg rounded-lg">
+        <h2 className="text-2xl font-bold mb-6 text-center">Ingreso a IN Class</h2>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block mb-1 font-medium">Correo</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="correo@colegioconcepcionlinares.cl"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Contraseña</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded"
+          >
+            Ingresar
+          </button>
+        </form>
+      </div>
     </div>
-  )
+  );
 }
