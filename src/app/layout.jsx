@@ -3,5 +3,5 @@
     <html lang="es">
       <body>{children}</body>
     </html>
-  );
+  )
 }

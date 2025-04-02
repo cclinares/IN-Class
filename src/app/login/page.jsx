@@ -1,3 +1,8 @@
-﻿export default function LoginPage() {
-  return <h1>Página de Login</h1>;
+﻿'use client'
+export default function LoginPage() {
+  return (
+    <div>
+      <h1>Página de Login</h1>
+    </div>
+  )
 }
