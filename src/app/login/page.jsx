@@ -26,9 +26,17 @@ export default function LoginPage() {
   }, [router, supabase]);
 
   return (
-    <main style={{ padding: "2rem" }}>
-      <h1>Iniciar sesión</h1>
-      <button onClick={handleLogin}>Login con Google</button>
+    <main className="flex flex-col items-center justify-center h-screen bg-blue-50 p-6">
+      <div className="bg-white shadow-xl rounded-2xl p-10 max-w-md text-center">
+        <h1 className="text-3xl font-bold mb-4 text-blue-700">IN-Class Login</h1>
+        <p className="mb-4 text-gray-600">Accede con tu cuenta institucional</p>
+        <button
+          onClick={handleLogin}
+          className="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition"
+        >
+          Iniciar sesión con Google
+        </button>
+      </div>
     </main>
   );
 }
