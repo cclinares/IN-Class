@@ -1,5 +1,5 @@
 ﻿// src/app/page.jsx
-'use client';
+'use client'
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -7,7 +7,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/login');
+    router.replace('/login');
   }, [router]);
 
   return null;
