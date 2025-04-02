@@ -1,47 +1,31 @@
-﻿'use client'
-
+﻿'use client';
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const router = useRouter();
-  const supabase = createClientComponentClient();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError('Credenciales incorrectas');
-    } else {
-      router.push('/dashboard');
-    }
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) alert('Error al iniciar sesión');
+    else window.location.href = '/panel';
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Iniciar Sesión</h1>
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Correo"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        /><br />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        /><br />
-        <button type="submit">Entrar</button>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-      </form>
-    </div>
+    <main style={{ padding: '2rem' }}>
+      <h1>Login</h1>
+      <input placeholder="Correo" onChange={e => setEmail(e.target.value)} /><br />
+      <input type="password" placeholder="Contraseña" onChange={e => setPassword(e.target.value)} /><br />
+      <button onClick={handleLogin}>Iniciar Sesión</button>
+    </main>
   );
 }
