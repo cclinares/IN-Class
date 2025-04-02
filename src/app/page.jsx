@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const supabase = createClientComponentClient();
   const [user, setUser] = useState(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -32,7 +32,9 @@ export default function HomePage() {
         <h1 className="text-3xl font-bold mb-4">Bienvenido a IN-Class</h1>
         {user && (
           <>
-            <p className="text-lg text-gray-700 mb-4">Correo: <strong>{user.email}</strong></p>
+            <p className="text-lg text-gray-700 mb-4">
+              Correo: <strong>{user.email}</strong>
+            </p>
             <button
               onClick={handleLogout}
               className="bg-red-500 text-white px-6 py-2 rounded-xl hover:bg-red-600 transition"

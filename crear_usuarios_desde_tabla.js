@@ -1,6 +1,7 @@
 ﻿import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 
+// Datos de conexión
 const SUPABASE_URL = 'https://djftpnxuwujyhxixedwj.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZnRwbnh1d3VqeWh4aXhlZHdqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzUxMjk2MCwiZXhwIjoyMDU5MDg4OTYwfQ.ta6CZ7Oc23UAR6YM0DxTn6KHNglOD0Y5oZo6SsAuSkE';
 
@@ -8,6 +9,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const TABLA_USUARIOS = 'usuarios';
 const TABLA_LOG = 'registro_creacion';
 
+// Configuración del correo
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -16,6 +18,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Generar contraseña aleatoria
 function generarPassword() {
   const caracteres = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let password = '';
@@ -61,7 +64,6 @@ async function crearUsuariosDesdeTabla() {
         mensaje
       });
 
-      // ⛔️ No se envía el correo si ya existía
       if (signUpError.code === 'email_exists') continue;
     }
 
@@ -90,7 +92,7 @@ async function crearUsuariosDesdeTabla() {
         </table>
 
         <div style="text-align: center; margin: 30px 0;">
-          <a href="http://localhost:3000/login" style="background-color: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">
+          <a href="https://in-class-liard.vercel.app/login" style="background-color: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">
             Ingreso a IN Class
           </a>
           <a href="mailto:soporte@colegioconcepcionlinares.cl" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
@@ -98,7 +100,7 @@ async function crearUsuariosDesdeTabla() {
           </a>
         </div>
 
-        <p style="color: #888;"><em>Actualmente la plataforma está en desarrollo y disponible solo en modo local.</em></p>
+        <p style="color: #888;"><em>Actualmente la plataforma está disponible en línea.</em></p>
         <p style="color: #b91c1c;"><strong>No compartas esta información con terceros.</strong></p>
 
         <p style="margin-top: 30px;">Saludos cordiales,<br><strong>Equipo de Desarrollo</strong><br>Colegio Concepción Linares</p>
