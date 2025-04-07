@@ -2,13 +2,12 @@
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
-// Conexión a Supabase con Service Role
+// Supabase y nodemailer config
 const supabase = createClient(
-  "https://djftpnxuwujyhxixedwj.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZnRwbnh1d3VqeWh4aXhlZHdqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzUxMjk2MCwiZXhwIjoyMDU5MDg4OTYwfQ.ta6CZ7Oc23UAR6YM0DxTn6KHNglOD0Y5oZo6SsAuSkE"
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Configurar nodemailer con Gmail
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -17,83 +16,49 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Generar contraseña segura
-function generarPassword() {
-  const caracteres = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from({ length: 10 }, () =>
-    caracteres.charAt(Math.floor(Math.random() * caracteres.length))
-  ).join("");
-}
-
 export async function POST(req) {
   const { usuarios } = await req.json();
 
-  if (!usuarios || usuarios.length === 0) {
-    return NextResponse.json({ mensaje: "No se enviaron usuarios." }, { status: 400 });
-  }
-
   for (const u of usuarios) {
-    const { email, nombre, rol } = u;
-    const password = generarPassword();
+    const { email } = u;
 
-    // Buscar usuario en auth
-    const { data: authData } = await supabase.auth.admin.listUsers({ email });
-    const usuarioAuth = authData?.users?.[0];
+    const { data, error } = await supabase
+      .from("registro_usuarios")
+      .select("*")
+      .eq("email", email)
+      .single();
 
-    if (!usuarioAuth) {
-      console.error(`❌ Usuario no encontrado en auth: ${email}`);
+    if (error || !data) {
+      console.error(`❌ No se encontró información para ${email}`);
       continue;
     }
 
-    // Actualizar contraseña
-    await supabase.auth.admin.updateUserById(usuarioAuth.id, {
-      password,
-    });
+    const { nombre, rol, password } = data;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <div style="text-align: center;">
-          <img src="https://i.ibb.co/rGPwn1Wp/2024.png" alt="Logo Colegio" width="90" />
-          <h2 style="color: #2c3e50;">Cuenta creada en la Plataforma Educativa</h2>
-        </div>
-        <p>Estimado/a <strong>${nombre}</strong>,</p>
-        <p>Tu cuenta ha sido activada o reconfigurada. A continuación, te dejamos tus credenciales de acceso:</p>
-
+        <h2 style="color: #2c3e50;">Reenvío de credenciales</h2>
+        <p>Estimado/a <strong>${nombre}</strong>, aquí están tus datos de acceso:</p>
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr><td style="padding: 8px; border: 1px solid #ddd;">📧 Correo</td><td style="padding: 8px; border: 1px solid #ddd;">${email}</td></tr>
-          <tr><td style="padding: 8px; border: 1px solid #ddd;">🔑 Contraseña</td><td style="padding: 8px; border: 1px solid #ddd;">${password}</td></tr>
-          <tr><td style="padding: 8px; border: 1px solid #ddd;">👤 Rol</td><td style="padding: 8px; border: 1px solid #ddd;">${rol?.join(", ")}</td></tr>
+          <tr><td>Correo</td><td>${email}</td></tr>
+          <tr><td>Contraseña</td><td>${password}</td></tr>
+          <tr><td>Rol</td><td>${rol?.join(", ")}</td></tr>
         </table>
-
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://in-class-liard.vercel.app/login" style="background-color: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">
-            Ingreso a IN Class
-          </a>
-          <a href="mailto:soporte@colegioconcepcionlinares.cl" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-            Contactar a Soporte
-          </a>
-        </div>
-
-        <p style="color: #888;"><em>Actualmente la plataforma está disponible en línea.</em></p>
-        <p style="color: #b91c1c;"><strong>No compartas esta información con terceros.</strong></p>
-
-        <p style="margin-top: 30px;">Saludos cordiales,<br><strong>Equipo de Desarrollo</strong><br>Colegio Concepción Linares</p>
+        <a href="https://in-class-liard.vercel.app/login" style="background:#1e40af; color:white; padding:10px 20px; border-radius:6px;">Ingresar a IN-Class</a>
       </div>
     `;
 
     try {
       await transporter.sendMail({
-        from: '"Plataforma Colegio" <ivanjozape@gmail.com>',
+        from: '"IN-Class" <ivanjozape@gmail.com>',
         to: email,
-        subject: "Tu cuenta IN-Class",
+        subject: "Reenvío de credenciales IN-Class",
         html,
       });
-
-      console.log(`📨 Correo enviado a ${email}`);
     } catch (e) {
-      console.error(`❌ Error al enviar correo a ${email}:`, e.message);
+      console.error(`❌ Error al enviar a ${email}:`, e.message);
     }
   }
 
-  return NextResponse.json({ mensaje: "Credenciales enviadas." });
+  return NextResponse.json({ mensaje: "Correos reenviados." });
 }
