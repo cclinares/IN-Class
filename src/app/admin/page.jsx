@@ -122,7 +122,11 @@ export default function AdminPage() {
                     </td>
                     <td className="p-2 border">{usuario.nombre}</td>
                     <td className="p-2 border">{usuario.email}</td>
-                    <td className="p-2 border">{usuario.rol?.join(", ")}</td>
+                    <td className="p-2 border">
+                      {Array.isArray(usuario.rol)
+                        ? usuario.rol.join(", ")
+                        : "Sin rol"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
