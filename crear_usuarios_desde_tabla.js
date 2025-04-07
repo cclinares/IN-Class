@@ -9,7 +9,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const TABLA_USUARIOS = 'usuarios';
 const TABLA_LOG = 'registro_creacion';
 
-// Configuración del correo
+// Configurar correo
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -28,11 +28,11 @@ function generarPassword() {
   return password;
 }
 
+// Crear usuarios desde tabla
 async function crearUsuariosDesdeTabla() {
   console.log('🔍 Cargando usuarios...');
 
   const { data, error } = await supabase.from(TABLA_USUARIOS).select('*');
-
   if (error) {
     console.error('❌ Error al obtener usuarios:', error.message);
     return;
@@ -46,7 +46,10 @@ async function crearUsuariosDesdeTabla() {
       email,
       password,
       email_confirm: true,
-      user_metadata: { nombre, rol }
+      user_metadata: {
+        nombre,
+        rol
+      }
     });
 
     if (signUpError) {
@@ -77,18 +80,9 @@ async function crearUsuariosDesdeTabla() {
         <p>Tu cuenta ha sido creada con éxito en la plataforma del Colegio Concepción Linares. A continuación, te dejamos tus credenciales de acceso:</p>
 
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">📧 Correo</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${email}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">🔑 Contraseña</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${password}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;">👤 Rol</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${rol}</td>
-          </tr>
+          <tr><td style="padding: 8px; border: 1px solid #ddd;">📧 Correo</td><td style="padding: 8px; border: 1px solid #ddd;">${email}</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #ddd;">🔑 Contraseña</td><td style="padding: 8px; border: 1px solid #ddd;">${password}</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #ddd;">👤 Rol</td><td style="padding: 8px; border: 1px solid #ddd;">${rol.join(', ')}</td></tr>
         </table>
 
         <div style="text-align: center; margin: 30px 0;">
