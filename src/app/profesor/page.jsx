@@ -1,34 +1,70 @@
 ﻿"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ProfesorPage() {
-  const router = useRouter();
   const supabase = createClientComponentClient();
-  const [authorized, setAuthorized] = useState(false);
+  const router = useRouter();
+
+  const [asignaturas, setAsignaturas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [autorizado, setAutorizado] = useState(false);
 
   useEffect(() => {
-    const checkRole = async () => {
-      const { data } = await supabase.auth.getUser();
-      const rol = data?.user?.user_metadata?.rol;
+    const obtenerAsignaturas = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
 
-      if (rol === "profesor" || (Array.isArray(rol) && rol.includes("profesor"))) {
-        setAuthorized(true);
-      } else {
+      const rol = user?.user_metadata?.rol;
+      if (!rol || (!rol.includes("profesor") && rol !== "profesor")) {
         router.push("/");
+        return;
       }
+
+      setAutorizado(true);
+
+      // Buscar asignaturas donde profesor_id = usuario.id
+      const { data: asignaturasData, error } = await supabase
+        .from("asignaturas")
+        .select("id, nombre, curso_id, cursos(nombre)")
+        .eq("profesor_id", user.id);
+
+      if (error) {
+        console.error("Error al cargar asignaturas:", error.message);
+        return;
+      }
+
+      setAsignaturas(asignaturasData);
+      setCargando(false);
     };
 
-    checkRole();
-  }, [router, supabase]);
+    obtenerAsignaturas();
+  }, []);
 
-  if (!authorized) return null;
+  if (!autorizado) return null;
 
   return (
-    <main className="p-10">
-      <h1 className="text-3xl font-bold text-green-700">Panel del Profesor</h1>
-      <p className="mt-4 text-gray-600">Aquí podrás gestionar tus clases y estudiantes.</p>
+    <main className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold text-blue-700">Panel de Profesor</h1>
+
+      {cargando ? (
+        <p>Cargando asignaturas...</p>
+      ) : asignaturas.length === 0 ? (
+        <p>No tienes asignaturas asignadas.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {asignaturas.map((asignatura) => (
+            <div key={asignatura.id} className="border rounded-lg p-4 shadow bg-white">
+              <h2 className="text-lg font-semibold text-gray-800">{asignatura.nombre}</h2>
+              <p className="text-gray-600">
+                Curso: <strong>{asignatura.cursos?.nombre || "Sin curso"}</strong>
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
