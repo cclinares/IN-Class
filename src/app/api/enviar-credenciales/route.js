@@ -1,15 +1,23 @@
 ﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-// Configuración
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Conexión a Supabase con Service Role
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  "https://djftpnxuwujyhxixedwj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZnRwbnh1d3VqeWh4aXhlZHdqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzUxMjk2MCwiZXhwIjoyMDU5MDg4OTYwfQ.ta6CZ7Oc23UAR6YM0DxTn6KHNglOD0Y5oZo6SsAuSkE"
 );
 
-// Generar contraseña
+// Configurar nodemailer con Gmail
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "ivanjozape@gmail.com",
+    pass: "yspi aoqg tjfa gant",
+  },
+});
+
+// Generar contraseña segura
 function generarPassword() {
   const caracteres = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from({ length: 10 }, () =>
@@ -17,7 +25,6 @@ function generarPassword() {
   ).join("");
 }
 
-// API route
 export async function POST(req) {
   const { usuarios } = await req.json();
 
@@ -29,6 +36,7 @@ export async function POST(req) {
     const { email, nombre, rol } = u;
     const password = generarPassword();
 
+    // Buscar usuario en auth
     const { data: authData } = await supabase.auth.admin.listUsers({ email });
     const usuarioAuth = authData?.users?.[0];
 
@@ -37,11 +45,11 @@ export async function POST(req) {
       continue;
     }
 
+    // Actualizar contraseña
     await supabase.auth.admin.updateUserById(usuarioAuth.id, {
       password,
     });
 
-    // HTML del correo (idéntico al anterior)
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
         <div style="text-align: center;">
@@ -50,11 +58,13 @@ export async function POST(req) {
         </div>
         <p>Estimado/a <strong>${nombre}</strong>,</p>
         <p>Tu cuenta ha sido activada o reconfigurada. A continuación, te dejamos tus credenciales de acceso:</p>
+
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <tr><td style="padding: 8px; border: 1px solid #ddd;">📧 Correo</td><td style="padding: 8px; border: 1px solid #ddd;">${email}</td></tr>
           <tr><td style="padding: 8px; border: 1px solid #ddd;">🔑 Contraseña</td><td style="padding: 8px; border: 1px solid #ddd;">${password}</td></tr>
           <tr><td style="padding: 8px; border: 1px solid #ddd;">👤 Rol</td><td style="padding: 8px; border: 1px solid #ddd;">${rol?.join(", ")}</td></tr>
         </table>
+
         <div style="text-align: center; margin: 30px 0;">
           <a href="https://in-class-liard.vercel.app/login" style="background-color: #1e40af; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">
             Ingreso a IN Class
@@ -63,23 +73,25 @@ export async function POST(req) {
             Contactar a Soporte
           </a>
         </div>
+
         <p style="color: #888;"><em>Actualmente la plataforma está disponible en línea.</em></p>
         <p style="color: #b91c1c;"><strong>No compartas esta información con terceros.</strong></p>
+
         <p style="margin-top: 30px;">Saludos cordiales,<br><strong>Equipo de Desarrollo</strong><br>Colegio Concepción Linares</p>
       </div>
     `;
 
     try {
-      await resend.emails.send({
-        from: "IN-Class <no-reply@colegioconcepcionlinares.cl>",
+      await transporter.sendMail({
+        from: '"Plataforma Colegio" <ivanjozape@gmail.com>',
         to: email,
         subject: "Tu cuenta IN-Class",
         html,
       });
 
       console.log(`📨 Correo enviado a ${email}`);
-    } catch (error) {
-      console.error(`❌ Error al enviar con Resend a ${email}:`, error.message);
+    } catch (e) {
+      console.error(`❌ Error al enviar correo a ${email}:`, e.message);
     }
   }
 
