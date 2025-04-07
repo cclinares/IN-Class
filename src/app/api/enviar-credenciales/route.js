@@ -2,20 +2,30 @@
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
-// Configuración desde variables de entorno
+// Configuración de Supabase (reemplazar si usas variables de entorno)
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  "https://djftpnxuwujyhxixedwj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZnRwbnh1d3VqeWh4aXhlZHdqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzUxMjk2MCwiZXhwIjoyMDU5MDg4OTYwfQ.ta6CZ7Oc23UAR6YM0DxTn6KHNglOD0Y5oZo6SsAuSkE"
 );
 
+// Configuración de correo (Gmail)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
+    user: "ivanjozape@gmail.com",
+    pass: "yspi aoqg tjfa gant",
   },
 });
 
+// Función para generar contraseña segura
+function generarPassword() {
+  const caracteres = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 10 }, () =>
+    caracteres.charAt(Math.floor(Math.random() * caracteres.length))
+  ).join("");
+}
+
+// Ruta POST para enviar credenciales con nueva contraseña
 export async function POST(req) {
   const { usuarios } = await req.json();
 
@@ -24,29 +34,33 @@ export async function POST(req) {
   }
 
   for (const u of usuarios) {
-    const { email } = u;
+    const { email, nombre, rol } = u;
+    const password = generarPassword();
 
-    const { data, error } = await supabase
-      .from("registro_usuarios")
-      .select("*")
-      .eq("email", email)
-      .single();
+    // Buscar usuario en Supabase Auth
+    const { data: authData } = await supabase.auth.admin.listUsers({ email });
+    const usuarioAuth = authData?.users?.[0];
 
-    if (error || !data) {
-      console.error(`❌ No se encontró info para ${email}`);
+    if (!usuarioAuth) {
+      console.error(`❌ Usuario no encontrado: ${email}`);
       continue;
     }
 
-    const { nombre, rol, password } = data;
+    // Actualizar la contraseña del usuario
+    await supabase.auth.admin.updateUserById(usuarioAuth.id, {
+      password,
+    });
 
+    // Construir el contenido HTML del correo
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
         <div style="text-align: center;">
           <img src="https://i.ibb.co/rGPwn1Wp/2024.png" alt="Logo Colegio" width="90" />
-          <h2 style="color: #2c3e50;">Reenvío de credenciales</h2>
+          <h2 style="color: #2c3e50;">Tus credenciales de acceso</h2>
         </div>
         <p>Estimado/a <strong>${nombre}</strong>,</p>
-        <p>Estas son tus credenciales de acceso a la plataforma:</p>
+        <p>Tu cuenta ha sido actualizada. Estas son tus nuevas credenciales:</p>
+
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <tr><td style="padding: 8px; border: 1px solid #ddd;">📧 Correo</td><td style="padding: 8px; border: 1px solid #ddd;">${email}</td></tr>
           <tr><td style="padding: 8px; border: 1px solid #ddd;">🔑 Contraseña</td><td style="padding: 8px; border: 1px solid #ddd;">${password}</td></tr>
@@ -69,19 +83,20 @@ export async function POST(req) {
       </div>
     `;
 
+    // Enviar el correo
     try {
       await transporter.sendMail({
         from: '"Plataforma IN-Class" <ivanjozape@gmail.com>',
         to: email,
-        subject: "Tus credenciales de acceso",
+        subject: "Tus nuevas credenciales de acceso",
         html,
       });
 
-      console.log(`📨 Correo reenviado a ${email}`);
+      console.log(`📨 Correo enviado a ${email}`);
     } catch (e) {
-      console.error(`❌ Error al enviar a ${email}:`, e.message);
+      console.error(`❌ Error al enviar correo a ${email}:`, e.message);
     }
   }
 
-  return NextResponse.json({ mensaje: "Correos enviados correctamente." });
+  return NextResponse.json({ mensaje: "Credenciales enviadas." });
 }
