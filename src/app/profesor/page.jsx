@@ -29,7 +29,7 @@ export default function ProfesorPage() {
       const { data: asignaturasData, error } = await supabase
         .from("asignaturas")
         .select("id, nombre, curso_id, cursos(nombre)")
-        .eq("profesor_id", user.id);
+        .eq("usuario_id", user.id);
 
       if (error) {
         console.error("Error al cargar asignaturas:", error.message);
