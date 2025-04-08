@@ -17,6 +17,7 @@ export default function ProfesorPage() {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
 
+      // Verifica el rol del usuario
       const rol = user?.user_metadata?.rol;
       if (!rol || (!rol.includes("profesor") && rol !== "profesor")) {
         router.push("/");
@@ -25,7 +26,10 @@ export default function ProfesorPage() {
 
       setAutorizado(true);
 
-      // Buscar asignaturas donde profesor_id = usuario.id
+      // 👉 Mostrar el ID del usuario logueado para comprobarlo en Supabase
+      console.log("ID del usuario logueado:", user.id);
+
+      // Buscar asignaturas donde usuario_id = user.id
       const { data: asignaturasData, error } = await supabase
         .from("asignaturas")
         .select("id, nombre, curso_id, cursos(nombre)")
@@ -56,10 +60,16 @@ export default function ProfesorPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {asignaturas.map((asignatura) => (
-            <div key={asignatura.id} className="border rounded-lg p-4 shadow bg-white">
-              <h2 className="text-lg font-semibold text-gray-800">{asignatura.nombre}</h2>
+            <div
+              key={asignatura.id}
+              className="border rounded-lg p-4 shadow bg-white"
+            >
+              <h2 className="text-lg font-semibold text-gray-800">
+                {asignatura.nombre}
+              </h2>
               <p className="text-gray-600">
-                Curso: <strong>{asignatura.cursos?.nombre || "Sin curso"}</strong>
+                Curso:{" "}
+                <strong>{asignatura.cursos?.nombre || "Sin curso"}</strong>
               </p>
             </div>
           ))}
