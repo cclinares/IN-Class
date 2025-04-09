@@ -1,46 +1,57 @@
 ﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 function CrearPasswordInner() {
   const supabase = createClientComponentClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [password, setPassword] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [mensaje, setMensaje] = useState("");
-  const [token, setToken] = useState("");
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.replace("#", "?"));
-    const accessToken = params.get("access_token");
+    const tokensDesdeHash = async () => {
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.replace("#", "?"));
 
-    if (accessToken) {
-      setToken(accessToken);
-    } else {
-      setMensaje("Token inválido o expirado.");
-    }
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (error) {
+          setMensaje("❌ Error al autenticar sesión.");
+        }
+      } else {
+        setMensaje("❌ Enlace inválido o expirado.");
+      }
+
+      setCargando(false);
+    };
+
+    tokensDesdeHash();
   }, []);
 
   const actualizarPassword = async () => {
     if (password !== confirmar) {
-      setMensaje("Las contraseñas no coinciden");
+      setMensaje("⚠️ Las contraseñas no coinciden.");
       return;
     }
 
-    const { error } = await supabase.auth.updateUser(
-      { password },
-      { accessToken: token }
-    );
+    const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
-      setMensaje("Error al establecer contraseña: " + error.message);
+      setMensaje("❌ Error al establecer contraseña: " + error.message);
     } else {
-      setMensaje("Contraseña creada. Redirigiendo...");
+      setMensaje("✅ Contraseña creada con éxito. Redirigiendo...");
       setTimeout(() => router.push("/"), 3000);
     }
   };
@@ -49,28 +60,34 @@ function CrearPasswordInner() {
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Crear nueva contraseña</h1>
 
-      <input
-        type="password"
-        placeholder="Nueva contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-full mb-2 p-2 border rounded"
-      />
-      <input
-        type="password"
-        placeholder="Confirmar contraseña"
-        value={confirmar}
-        onChange={(e) => setConfirmar(e.target.value)}
-        className="w-full mb-4 p-2 border rounded"
-      />
-      <button
-        onClick={actualizarPassword}
-        className="bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        Guardar contraseña
-      </button>
+      {cargando ? (
+        <p>Cargando...</p>
+      ) : (
+        <>
+          <input
+            type="password"
+            placeholder="Nueva contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full mb-2 p-2 border rounded"
+          />
+          <input
+            type="password"
+            placeholder="Confirmar contraseña"
+            value={confirmar}
+            onChange={(e) => setConfirmar(e.target.value)}
+            className="w-full mb-4 p-2 border rounded"
+          />
+          <button
+            onClick={actualizarPassword}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Guardar contraseña
+          </button>
 
-      {mensaje && <p className="mt-4 text-center">{mensaje}</p>}
+          {mensaje && <p className="mt-4 text-center">{mensaje}</p>}
+        </>
+      )}
     </main>
   );
 }
