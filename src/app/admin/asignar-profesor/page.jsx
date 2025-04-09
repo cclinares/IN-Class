@@ -3,69 +3,76 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-export default function AsignarProfesorPage() {
+export default function AsignarProfesor() {
   const supabase = createClientComponentClient();
   const [asignaturas, setAsignaturas] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
+  const [profesores, setProfesores] = useState([]);
   const [cursos, setCursos] = useState([]);
-  const [cursoFiltrado, setCursoFiltrado] = useState("");
-  const [asignaciones, setAsignaciones] = useState({});
+  const [cursoSeleccionado, setCursoSeleccionado] = useState("");
   const [mensaje, setMensaje] = useState("");
 
-  const cargarDatos = async () => {
-    const { data: asignaturasData } = await supabase
-      .from("asignaturas")
-      .select("id, nombre, curso_id, cursos(nombre), profesor_id, usuario_id");
-
-    const { data: usuariosData } = await supabase
-      .from("usuarios")
-      .select("id, nombre, rol");
-
-    const { data: cursosData } = await supabase.from("cursos").select("id, nombre");
-
-    setAsignaturas(asignaturasData || []);
-    setUsuarios(usuariosData || []);
-    setCursos(cursosData || []);
-
-    const asignacionesIniciales = {};
-    (asignaturasData || []).forEach((a) => {
-      asignacionesIniciales[a.id] = a.profesor_id || a.usuario_id || "";
-    });
-    setAsignaciones(asignacionesIniciales);
-  };
-
   useEffect(() => {
+    const cargarDatos = async () => {
+      const { data: asig } = await supabase
+        .from("asignaturas")
+        .select("id, nombre, curso_id, profesor_id, cursos(nombre)");
+
+      const { data: profs } = await supabase
+        .from("usuarios")
+        .select("id, nombre, rol");
+
+      const { data: cursosData } = await supabase
+        .from("cursos")
+        .select("id, nombre");
+
+      setAsignaturas(asig || []);
+      setProfesores(profs?.filter((p) => p.rol.includes("profesor")) || []);
+      setCursos(cursosData || []);
+    };
+
     cargarDatos();
   }, []);
 
-  const profesores = usuarios.filter((u) => u.rol?.includes("profesor"));
-  const asignaturasFiltradas = cursoFiltrado
-    ? asignaturas.filter((a) => a.curso_id === cursoFiltrado)
-    : asignaturas;
+  const guardarCambios = async () => {
+    setMensaje("Guardando...");
+    for (const asignatura of asignaturas) {
+      const { id, profesor_id } = asignatura;
+      if (profesor_id) {
+        const { error } = await supabase
+          .from("asignaturas")
+          .update({ profesor_id, usuario_id: profesor_id }) // 🔄 sincroniza ambos campos
+          .eq("id", id);
 
-  const guardarAsignacion = async (asignaturaId) => {
-    const profesorId = asignaciones[asignaturaId];
-
-    const { error } = await supabase
-      .from("asignaturas")
-      .update({
-        profesor_id: profesorId,
-        usuario_id: profesorId, // 🔁 aseguramos sincronización
-      })
-      .eq("id", asignaturaId);
-
-    if (error) {
-      setMensaje("❌ Error al guardar asignación.");
-    } else {
-      setMensaje("✅ Asignación guardada correctamente.");
-      setTimeout(() => setMensaje(""), 3000);
+        if (error) {
+          console.error("Error al guardar:", error.message);
+        }
+      }
     }
-
-    await cargarDatos();
+    setMensaje("Cambios guardados.");
   };
 
+  const actualizarLista = async () => {
+    const { data: asig } = await supabase
+      .from("asignaturas")
+      .select("id, nombre, curso_id, profesor_id, cursos(nombre)");
+
+    setAsignaturas(asig || []);
+  };
+
+  const handleSeleccion = (asignaturaId, profesorId) => {
+    setAsignaturas((prev) =>
+      prev.map((a) =>
+        a.id === asignaturaId ? { ...a, profesor_id: profesorId } : a
+      )
+    );
+  };
+
+  const asignaturasFiltradas = cursoSeleccionado
+    ? asignaturas.filter((a) => a.curso_id === cursoSeleccionado)
+    : asignaturas;
+
   return (
-    <main className="p-6 space-y-6">
+    <main className="p-6 space-y-4">
       <a
         href="/admin"
         className="inline-block mb-4 bg-gray-100 border text-sm px-3 py-1 rounded hover:bg-gray-200"
@@ -73,73 +80,58 @@ export default function AsignarProfesorPage() {
         ← Volver al panel de administrador
       </a>
 
-      <h1 className="text-2xl font-bold text-blue-700">Asignar Profesores a Asignaturas</h1>
+      <h1 className="text-xl font-bold">Asignar Profesores a Asignaturas</h1>
 
-      <div className="flex flex-wrap items-center gap-4 mb-4">
-        <button
-          onClick={cargarDatos}
-          className="bg-gray-200 px-4 py-2 rounded border hover:bg-gray-300"
+      <label className="block">
+        Filtrar por curso:
+        <select
+          className="ml-2"
+          value={cursoSeleccionado}
+          onChange={(e) => setCursoSeleccionado(e.target.value)}
         >
-          🔁 Actualizar datos
+          <option value="">Todos</option>
+          {cursos.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={actualizarLista}
+          className="ml-2 px-2 py-1 text-sm bg-blue-100 rounded hover:bg-blue-200"
+        >
+          Actualizar
         </button>
+      </label>
 
-        <div>
-          <label className="mr-2 font-semibold">Filtrar por curso:</label>
-          <select
-            value={cursoFiltrado}
-            onChange={(e) => setCursoFiltrado(e.target.value)}
-            className="p-2 border rounded"
-          >
-            <option value="">Todos</option>
-            {cursos.map((curso) => (
-              <option key={curso.id} value={curso.id}>
-                {curso.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {mensaje && <p className="text-sm text-green-600">{mensaje}</p>}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {asignaturasFiltradas.map((asignatura) => (
-          <div
-            key={asignatura.id}
-            className="border rounded-lg p-4 shadow bg-white space-y-2"
-          >
-            <h2 className="text-lg font-semibold">{asignatura.nombre}</h2>
-            <p className="text-sm text-gray-500">
-              Curso: {asignatura.cursos?.nombre || "Sin curso"}
-            </p>
-
+      <ul>
+        {asignaturasFiltradas.map((asig) => (
+          <li key={asig.id} className="mb-2">
+            <strong>{asig.nombre}</strong> ({asig.cursos?.nombre || "Sin curso"})
             <select
-              value={asignaciones[asignatura.id] || ""}
-              onChange={(e) =>
-                setAsignaciones((prev) => ({
-                  ...prev,
-                  [asignatura.id]: e.target.value,
-                }))
-              }
-              className="p-2 border rounded w-full"
+              className="ml-2"
+              value={asig.profesor_id || ""}
+              onChange={(e) => handleSeleccion(asig.id, e.target.value)}
             >
-              <option value="">Seleccionar profesor</option>
-              {profesores.map((profesor) => (
-                <option key={profesor.id} value={profesor.id}>
-                  {profesor.nombre}
+              <option value="">-- Seleccionar Profesor --</option>
+              {profesores.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
                 </option>
               ))}
             </select>
-
-            <button
-              onClick={() => guardarAsignacion(asignatura.id)}
-              className="bg-blue-600 text-white px-3 py-1 rounded mt-2"
-            >
-              Guardar cambios
-            </button>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
+
+      <button
+        onClick={guardarCambios}
+        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        Guardar Cambios
+      </button>
+
+      {mensaje && <p className="mt-2 text-sm">{mensaje}</p>}
     </main>
   );
 }
