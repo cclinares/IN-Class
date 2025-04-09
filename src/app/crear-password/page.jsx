@@ -1,10 +1,10 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-export default function CrearPasswordPage() {
+function CrearPasswordInner() {
   const supabase = createClientComponentClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,7 +22,7 @@ export default function CrearPasswordPage() {
     if (accessToken) {
       setToken(accessToken);
     } else {
-      setMensaje("Token inválido. Intenta acceder desde el correo de invitación.");
+      setMensaje("Token inválido o expirado.");
     }
   }, []);
 
@@ -40,14 +40,14 @@ export default function CrearPasswordPage() {
     if (error) {
       setMensaje("Error al establecer contraseña: " + error.message);
     } else {
-      setMensaje("Contraseña establecida. Redirigiendo...");
+      setMensaje("Contraseña creada. Redirigiendo...");
       setTimeout(() => router.push("/"), 3000);
     }
   };
 
   return (
     <main className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Establecer Contraseña</h1>
+      <h1 className="text-2xl font-bold mb-4">Crear nueva contraseña</h1>
 
       <input
         type="password"
@@ -72,5 +72,13 @@ export default function CrearPasswordPage() {
 
       {mensaje && <p className="mt-4 text-center">{mensaje}</p>}
     </main>
+  );
+}
+
+export default function CrearPasswordPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Cargando formulario...</div>}>
+      <CrearPasswordInner />
+    </Suspense>
   );
 }
