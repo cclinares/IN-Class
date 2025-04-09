@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import supabase from "@/lib/supabase-browser";
 
 export default function CrearPassword() {
   const searchParams = useSearchParams();
@@ -27,7 +27,6 @@ export default function CrearPassword() {
     }
 
     setCargando(true);
-    const supabase = createClient();
 
     const { error } = await supabase.auth.updateUser(
       { password },
