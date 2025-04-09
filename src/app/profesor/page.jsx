@@ -25,10 +25,11 @@ export default function ProfesorPage() {
 
       setAutorizado(true);
 
+      // ✅ Consultar por profesor_id (ya no por usuario_id)
       const { data: asignaturasData, error } = await supabase
         .from("asignaturas")
         .select("id, nombre, curso_id, cursos(nombre)")
-        .eq("usuario_id", user.id);
+        .eq("profesor_id", user.id);
 
       if (error) {
         console.error("Error al cargar asignaturas:", error.message);
@@ -55,11 +56,7 @@ export default function ProfesorPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {asignaturas.map((asignatura) => (
-            <div
-              key={asignatura.id}
-              onClick={() => router.push(`/profesor/asignatura/${asignatura.id}`)}
-              className="border rounded-lg p-4 shadow bg-white cursor-pointer hover:bg-gray-50 transition"
-            >
+            <div key={asignatura.id} className="border rounded-lg p-4 shadow bg-white">
               <h2 className="text-lg font-semibold text-gray-800">{asignatura.nombre}</h2>
               <p className="text-gray-600">
                 Curso: <strong>{asignatura.cursos?.nombre || "Sin curso"}</strong>
