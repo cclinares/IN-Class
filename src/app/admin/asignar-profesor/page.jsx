@@ -15,7 +15,7 @@ export default function AsignarProfesorPage() {
   const cargarDatos = async () => {
     const { data: asignaturasData } = await supabase
       .from("asignaturas")
-      .select("id, nombre, curso_id, cursos(nombre), profesor_id");
+      .select("id, nombre, curso_id, cursos(nombre), profesor_id, usuario_id");
 
     const { data: usuariosData } = await supabase
       .from("usuarios")
@@ -29,7 +29,7 @@ export default function AsignarProfesorPage() {
 
     const asignacionesIniciales = {};
     (asignaturasData || []).forEach((a) => {
-      asignacionesIniciales[a.id] = a.profesor_id || "";
+      asignacionesIniciales[a.id] = a.profesor_id || a.usuario_id || "";
     });
     setAsignaciones(asignacionesIniciales);
   };
@@ -45,9 +45,13 @@ export default function AsignarProfesorPage() {
 
   const guardarAsignacion = async (asignaturaId) => {
     const profesorId = asignaciones[asignaturaId];
+
     const { error } = await supabase
       .from("asignaturas")
-      .update({ profesor_id: profesorId, usuario_id: profesorId })
+      .update({
+        profesor_id: profesorId,
+        usuario_id: profesorId, // 🔁 aseguramos sincronización
+      })
       .eq("id", asignaturaId);
 
     if (error) {
@@ -56,10 +60,19 @@ export default function AsignarProfesorPage() {
       setMensaje("✅ Asignación guardada correctamente.");
       setTimeout(() => setMensaje(""), 3000);
     }
+
+    await cargarDatos();
   };
 
   return (
     <main className="p-6 space-y-6">
+      <a
+        href="/admin"
+        className="inline-block mb-4 bg-gray-100 border text-sm px-3 py-1 rounded hover:bg-gray-200"
+      >
+        ← Volver al panel de administrador
+      </a>
+
       <h1 className="text-2xl font-bold text-blue-700">Asignar Profesores a Asignaturas</h1>
 
       <div className="flex flex-wrap items-center gap-4 mb-4">
