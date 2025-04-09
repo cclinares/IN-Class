@@ -1,91 +1,107 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function AsignarProfesorPage() {
   const supabase = createClientComponentClient();
-  const router = useRouter();
-
-  const [autorizado, setAutorizado] = useState(false);
   const [asignaturas, setAsignaturas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [guardando, setGuardando] = useState(false);
+  const [cursos, setCursos] = useState([]);
+  const [cursoFiltrado, setCursoFiltrado] = useState("");
 
   useEffect(() => {
     const cargarDatos = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const rol = userData?.user?.user_metadata?.rol;
-
-      if (rol !== "admin" && !rol?.includes("admin")) {
-        router.push("/");
-        return;
-      }
-
-      setAutorizado(true);
-
       const { data: asignaturasData } = await supabase
         .from("asignaturas")
-        .select("id, nombre, profesor_id");
+        .select("id, nombre, curso_id, cursos(nombre), profesor_id");
 
       const { data: usuariosData } = await supabase
         .from("usuarios")
         .select("id, nombre, rol");
 
+      const { data: cursosData } = await supabase.from("cursos").select("id, nombre");
+
       setAsignaturas(asignaturasData || []);
-      setUsuarios((usuariosData || []).filter((u) =>
-        u.rol?.includes("profesor")
-      ));
+      setUsuarios(usuariosData || []);
+      setCursos(cursosData || []);
     };
 
     cargarDatos();
   }, []);
 
   const asignarProfesor = async (asignaturaId, profesorId) => {
-    setGuardando(true);
-    const { error } = await supabase
+    await supabase
       .from("asignaturas")
       .update({ profesor_id: profesorId })
       .eq("id", asignaturaId);
 
-    if (error) {
-      alert("Error al asignar profesor: " + error.message);
-    } else {
-      setAsignaturas((prev) =>
-        prev.map((a) =>
-          a.id === asignaturaId ? { ...a, profesor_id: profesorId } : a
-        )
-      );
-    }
+    // Refrescar después de actualizar
+    const { data: asignaturasActualizadas } = await supabase
+      .from("asignaturas")
+      .select("id, nombre, curso_id, cursos(nombre), profesor_id");
 
-    setGuardando(false);
+    setAsignaturas(asignaturasActualizadas || []);
   };
 
-  if (!autorizado) return null;
+  const profesores = usuarios.filter((u) => u.rol.includes("profesor"));
+  const cursosUnicos = [...new Set(asignaturas.map((a) => a.curso_id))];
+
+  const asignaturasFiltradas = cursoFiltrado
+    ? asignaturas.filter((a) => a.curso_id === cursoFiltrado)
+    : asignaturas;
 
   return (
-    <main className="p-6 space-y-8">
-      <h1 className="text-2xl font-bold text-blue-700">Asignar Profesores</h1>
+    <main className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Asignar Profesores a Asignaturas</h1>
 
-      {asignaturas.map((asig) => (
-        <div key={asig.id} className="bg-white p-4 rounded shadow border">
-          <h2 className="font-semibold text-lg">{asig.nombre}</h2>
-          <select
-            className="mt-2 p-2 border rounded"
-            value={asig.profesor_id || ""}
-            onChange={(e) => asignarProfesor(asig.id, e.target.value)}
-            disabled={guardando}
-          >
-            <option value="">-- Selecciona un profesor --</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
+      <label className="block mb-2 font-semibold">Filtrar por curso:</label>
+      <select
+        value={cursoFiltrado}
+        onChange={(e) => setCursoFiltrado(e.target.value)}
+        className="mb-6 p-2 border rounded"
+      >
+        <option value="">Todos</option>
+        {cursos.map((curso) => (
+          <option key={curso.id} value={curso.id}>
+            {curso.nombre}
+          </option>
+        ))}
+      </select>
+
+      <div className="space-y-4">
+        {asignaturasFiltradas.map((asignatura) => {
+          const profesorAsignado = profesores.find((p) => p.id === asignatura.profesor_id);
+
+          return (
+            <div key={asignatura.id} className="border rounded-lg p-4 shadow bg-white">
+              <h2 className="font-semibold text-lg">{asignatura.nombre}</h2>
+              <p className="text-sm text-gray-500 mb-2">
+                Curso: {asignatura.cursos?.nombre || "Sin curso"}
+              </p>
+
+              <select
+                value={asignatura.profesor_id || ""}
+                onChange={(e) => asignarProfesor(asignatura.id, e.target.value)}
+                className="p-2 border rounded"
+              >
+                <option value="">Seleccionar profesor</option>
+                {profesores.map((profesor) => (
+                  <option key={profesor.id} value={profesor.id}>
+                    {profesor.nombre}
+                  </option>
+                ))}
+              </select>
+
+              {profesorAsignado && (
+                <p className="text-sm mt-1 text-green-700">
+                  Profesor asignado: <strong>{profesorAsignado.nombre}</strong>
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </main>
   );
 }

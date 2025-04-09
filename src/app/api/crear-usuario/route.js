@@ -9,6 +9,7 @@ export async function POST(req) {
   );
 
   console.log("✅ Intentando invitar a:", email);
+  console.log("✅ Roles asignados:", rol);
 
   try {
     const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
@@ -30,7 +31,7 @@ export async function POST(req) {
         id: data.user.id,
         nombre,
         email,
-        rol: [rol],
+        rol: rol, // este es un array como ["profesor", "apoderado"]
       },
     ]);
 
