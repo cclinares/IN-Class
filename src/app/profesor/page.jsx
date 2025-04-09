@@ -1,76 +1,69 @@
-﻿"use client";
+﻿// src/app/profesor/page.jsx
+"use client";
+
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase-browser";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function PanelProfesor() {
   const [asignaturas, setAsignaturas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [usuario, setUsuario] = useState(null);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 
   useEffect(() => {
-    const fetchAsignaturas = async () => {
-      try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+    const obtenerAsignaturas = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        console.log("👤 Usuario:", user);
+      if (sessionError || !session?.user) {
+        console.log("❌ No se pudo obtener el usuario:", sessionError);
+        setLoading(false);
+        return;
+      }
 
-        if (userError || !user) {
-          console.error("❌ No se pudo obtener el usuario:", userError);
-          setErrorMsg("No se pudo obtener el usuario autenticado.");
-          setLoading(false);
-          return;
-        }
+      const user = session.user;
+      setUsuario(user);
 
-        const userId = user.id;
-        console.log("🔍 Buscando asignaturas para usuario_id:", userId);
+      const { data: asignaturas, error } = await supabase
+        .from("asignaturas")
+        .select("id, nombre, curso_id (nombre)")
+        .eq("usuario_id", user.id);
 
-        const { data: asignaturasData, error } = await supabase
-          .from("asignaturas")
-          .select("id, nombre, curso_id, cursos(nombre)")
-          .eq("usuario_id", userId);
-
-        if (error) {
-          console.error("❌ Error al traer asignaturas:", error.message);
-          setErrorMsg("Error al cargar las asignaturas.");
-        } else {
-          console.log("✅ Asignaturas encontradas:", asignaturasData);
-          setAsignaturas(asignaturasData);
-        }
-      } catch (err) {
-        console.error("❌ Error inesperado:", err);
-        setErrorMsg("Error inesperado al cargar asignaturas.");
+      if (error) {
+        console.error("❌ Error al obtener asignaturas:", error.message);
+      } else {
+        setAsignaturas(asignaturas);
       }
 
       setLoading(false);
     };
 
-    fetchAsignaturas();
+    obtenerAsignaturas();
   }, []);
 
   return (
-    <div className="p-4">
-      <main>
-        <h2 className="text-xl font-semibold mb-4">Asignaturas que impartes</h2>
+    <div>
+      <h1>IN-Class</h1>
+      <button onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
 
-        {loading ? (
-          <p>Cargando asignaturas...</p>
-        ) : errorMsg ? (
-          <p className="text-red-600">{errorMsg}</p>
-        ) : asignaturas.length === 0 ? (
-          <p>No tienes asignaturas asignadas.</p>
-        ) : (
-          <ul className="list-disc ml-6">
-            {asignaturas.map((asig) => (
-              <li key={asig.id}>
-                {asig.nombre} – Curso: {asig.cursos?.nombre || "Sin curso"}
-              </li>
-            ))}
-          </ul>
-        )}
-      </main>
+      <h2>Asignaturas que impartes</h2>
+
+      {loading ? (
+        <p>Cargando asignaturas...</p>
+      ) : asignaturas.length === 0 ? (
+        <p>No tienes asignaturas asignadas.</p>
+      ) : (
+        <ul>
+          {asignaturas.map((a) => (
+            <li key={a.id}>
+              {a.nombre} ({a.curso_id?.nombre})
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
