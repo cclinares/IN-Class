@@ -1,69 +1,44 @@
-﻿"use client";
+﻿'use client'
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-export default function ProfesorPage() {
+export default function PanelProfesor() {
   const supabase = createClientComponentClient();
-  const router = useRouter();
-
+  const [user, setUser] = useState(null);
   const [asignaturas, setAsignaturas] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [autorizado, setAutorizado] = useState(false);
 
   useEffect(() => {
-    const obtenerAsignaturas = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData?.user;
+    const obtenerUsuarioYAsignaturas = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
 
-      const rol = user?.user_metadata?.rol;
-      if (!rol || (!rol.includes("profesor") && rol !== "profesor")) {
-        router.push("/");
-        return;
+      if (user) {
+        const { data: asignaturasData } = await supabase
+          .from('asignaturas')
+          .select('id, nombre, cursos(nombre)')
+          .eq('profesor_id', user.id); // <-- este filtro usa profesor_id
+
+        setAsignaturas(asignaturasData || []);
       }
-
-      setAutorizado(true);
-
-      // ✅ Consultar por profesor_id (ya no por usuario_id)
-      const { data: asignaturasData, error } = await supabase
-        .from("asignaturas")
-        .select("id, nombre, curso_id, cursos(nombre)")
-        .eq("profesor_id", user.id);
-
-      if (error) {
-        console.error("Error al cargar asignaturas:", error.message);
-        return;
-      }
-
-      setAsignaturas(asignaturasData);
-      setCargando(false);
     };
 
-    obtenerAsignaturas();
+    obtenerUsuarioYAsignaturas();
   }, []);
 
-  if (!autorizado) return null;
-
   return (
-    <main className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-blue-700">Asignaturas que impartes</h1>
-
-      {cargando ? (
-        <p>Cargando asignaturas...</p>
-      ) : asignaturas.length === 0 ? (
+    <main className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Asignaturas que impartes</h1>
+      {asignaturas.length === 0 ? (
         <p>No tienes asignaturas asignadas.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {asignaturas.map((asignatura) => (
-            <div key={asignatura.id} className="border rounded-lg p-4 shadow bg-white">
-              <h2 className="text-lg font-semibold text-gray-800">{asignatura.nombre}</h2>
-              <p className="text-gray-600">
-                Curso: <strong>{asignatura.cursos?.nombre || "Sin curso"}</strong>
-              </p>
-            </div>
+        <ul>
+          {asignaturas.map((asig) => (
+            <li key={asig.id} className="mb-2">
+              <strong>{asig.nombre}</strong> ({asig.cursos?.nombre || 'Sin curso'})
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </main>
   );
