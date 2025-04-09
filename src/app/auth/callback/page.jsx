@@ -1,29 +1,43 @@
-﻿'use client'
+﻿'use client';
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-export default function AuthCallback() {
-  const router = useRouter()
+export default function CallbackPage() {
+  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [mensaje, setMensaje] = useState("Verificando token...");
 
   useEffect(() => {
-    const handleAuth = async () => {
-      const { error } = await supabase.auth.getSession()
+    const verificarToken = async () => {
+      const access_token = searchParams.get("access_token");
+      const refresh_token = searchParams.get("refresh_token");
 
-      if (!error) {
-        router.push('/') // Redirige al home o a donde quieras
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+
+        if (error) {
+          setMensaje("Error al establecer sesión.");
+        } else {
+          router.push("/auth/crear-clave"); // Redirige a la página donde creará la clave
+        }
       } else {
-        console.error('Error de sesión:', error)
+        setMensaje("Token inválido.");
       }
-    }
+    };
 
-    handleAuth()
-  }, [router])
+    verificarToken();
+  }, []);
 
   return (
-    <div style={{ padding: 50 }}>
-      <p>Verificando sesión...</p>
-    </div>
-  )
+    <main className="p-8">
+      <h1 className="text-xl font-bold">Iniciando sesión...</h1>
+      <p>{mensaje}</p>
+    </main>
+  );
 }
