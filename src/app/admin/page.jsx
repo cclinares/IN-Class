@@ -53,6 +53,13 @@ export default function AdminPage() {
     <main className="p-6 space-y-8">
       <h1 className="text-2xl font-bold text-blue-700">Panel de Administrador</h1>
 
+      <a
+        href="/admin/asignar-profesor"
+        className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+      >
+        Asignar profesores a asignaturas
+      </a>
+
       <FormCrearUsuario onUsuarioCreado={fetchUsuarios} />
 
       <div className="bg-white shadow rounded-xl p-6">
