@@ -1,10 +1,10 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-export default function CallbackPage() {
+function CallbackInner() {
   const supabase = createClientComponentClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,10 +24,10 @@ export default function CallbackPage() {
         if (error) {
           setMensaje("Error al establecer sesión.");
         } else {
-          router.push("/auth/crear-clave"); // Redirige a la página donde creará la clave
+          router.push("/auth/crear-clave"); // redirige a página de cambio de clave
         }
       } else {
-        setMensaje("Token inválido.");
+        setMensaje("Token inválido o expirado.");
       }
     };
 
@@ -39,5 +39,13 @@ export default function CallbackPage() {
       <h1 className="text-xl font-bold">Iniciando sesión...</h1>
       <p>{mensaje}</p>
     </main>
+  );
+}
+
+export default function CallbackPage() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <CallbackInner />
+    </Suspense>
   );
 }
