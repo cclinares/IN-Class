@@ -1,56 +1,53 @@
-﻿import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+﻿import { createClient } from "@supabase/supabase-js";
 
-// Configuración de Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+export async function POST(req) {
+  const { nombre, email, rol } = await req.json();
 
-export async function POST(request) {
-  const { nombre, email, rol } = await request.json();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
-  // 1. Verificar si el usuario ya existe en Supabase Auth
-  const { data: existingUser, error: getUserError } = await supabase.auth.admin.getUserByEmail(email);
+  console.log("✅ Intentando invitar a:", email);
 
-  if (existingUser?.user) {
-    return NextResponse.json(
-      { error: "El correo ya está registrado en el sistema." },
-      { status: 400 }
-    );
-  }
+  try {
+    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+      data: { nombre, rol },
+    });
 
-  // 2. Enviar invitación al correo
-  const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { nombre, rol },
-    redirectTo: "https://in-class-liard.vercel.app/auth/callback", // 🔁 Importante para el flujo de contraseña
-  });
+    if (error) {
+      console.error("❌ Error al invitar usuario:", error.message);
+      return new Response(
+        JSON.stringify({ error: "Error al invitar usuario: " + error.message }),
+        { status: 500 }
+      );
+    }
 
-  if (inviteError) {
-    return NextResponse.json(
-      { error: "Error al enviar invitación: " + inviteError.message },
+    console.log("✅ Usuario invitado con éxito:", data.user.id);
+
+    const insert = await supabase.from("usuarios").insert([
+      {
+        id: data.user.id,
+        nombre,
+        email,
+        rol: [rol],
+      },
+    ]);
+
+    if (insert.error) {
+      console.error("❌ Error al insertar en usuarios:", insert.error.message);
+      return new Response(
+        JSON.stringify({ error: "Error al insertar usuario: " + insert.error.message }),
+        { status: 500 }
+      );
+    }
+
+    return new Response(JSON.stringify({ mensaje: "Usuario creado correctamente" }));
+  } catch (err) {
+    console.error("❌ Error inesperado:", err);
+    return new Response(
+      JSON.stringify({ error: "Error inesperado al crear usuario" }),
       { status: 500 }
     );
   }
-
-  const userId = inviteData?.user?.id;
-
-  // 3. Insertar en tabla usuarios
-  const { error: insertError } = await supabase.from("usuarios").insert([
-    {
-      id: userId,
-      nombre,
-      email,
-      rol: [rol],
-    },
-  ]);
-
-  if (insertError) {
-    return NextResponse.json(
-      { error: "Usuario creado en Auth, pero falló al registrar en tabla usuarios: " + insertError.message },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ mensaje: "Usuario creado e invitación enviada con éxito." });
 }
