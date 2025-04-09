@@ -1,78 +1,77 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 
-export default function AsignarProfesor() {
-  const supabase = createClientComponentClient();
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+export default function AsignarProfesorPage() {
   const [asignaturas, setAsignaturas] = useState([]);
   const [profesores, setProfesores] = useState([]);
   const [cursos, setCursos] = useState([]);
   const [cursoSeleccionado, setCursoSeleccionado] = useState("");
-  const [mensaje, setMensaje] = useState("");
+  const [asignaciones, setAsignaciones] = useState({});
+  const [guardando, setGuardando] = useState(false);
+
+  const cargarDatos = async () => {
+    const { data: asignaturas } = await supabase
+      .from("asignaturas")
+      .select("*");
+
+    const { data: profesores } = await supabase
+      .from("usuarios")
+      .select("id, nombre, rol");
+
+    const { data: cursos } = await supabase
+      .from("cursos")
+      .select("*");
+
+    setAsignaturas(asignaturas || []);
+    setProfesores((profesores || []).filter(p => p.rol.includes("profesor")));
+    setCursos(cursos || []);
+
+    const mapa = {};
+    for (const a of asignaturas || []) {
+      if (a.profesor_id) {
+        mapa[a.id] = a.profesor_id;
+      }
+    }
+    setAsignaciones(mapa);
+  };
 
   useEffect(() => {
-    const cargarDatos = async () => {
-      const { data: asig } = await supabase
-        .from("asignaturas")
-        .select("id, nombre, curso_id, profesor_id, cursos(nombre)");
-
-      const { data: profs } = await supabase
-        .from("usuarios")
-        .select("id, nombre, rol");
-
-      const { data: cursosData } = await supabase
-        .from("cursos")
-        .select("id, nombre");
-
-      setAsignaturas(asig || []);
-      setProfesores(profs?.filter((p) => p.rol.includes("profesor")) || []);
-      setCursos(cursosData || []);
-    };
-
     cargarDatos();
   }, []);
 
   const guardarCambios = async () => {
-    setMensaje("Guardando...");
-    for (const asignatura of asignaturas) {
-      const { id, profesor_id } = asignatura;
-      if (profesor_id) {
-        const { error } = await supabase
-          .from("asignaturas")
-          .update({ profesor_id, usuario_id: profesor_id }) // 🔄 sincroniza ambos campos
-          .eq("id", id);
+    setGuardando(true);
+    for (const [asignaturaId, profesorId] of Object.entries(asignaciones)) {
+      const { error } = await supabase
+        .from("asignaturas")
+        .update({ profesor_id: profesorId, usuario_id: profesorId })
+        .eq("id", asignaturaId);
 
-        if (error) {
-          console.error("Error al guardar:", error.message);
-        }
+      if (error) {
+        console.error("Error al asignar:", error.message);
       }
     }
-    setMensaje("Cambios guardados.");
+    setGuardando(false);
+    await cargarDatos(); // recarga después de guardar
   };
 
-  const actualizarLista = async () => {
-    const { data: asig } = await supabase
-      .from("asignaturas")
-      .select("id, nombre, curso_id, profesor_id, cursos(nombre)");
-
-    setAsignaturas(asig || []);
+  const handleAsignar = (asignaturaId, profesorId) => {
+    setAsignaciones((prev) => ({ ...prev, [asignaturaId]: profesorId }));
   };
 
-  const handleSeleccion = (asignaturaId, profesorId) => {
-    setAsignaturas((prev) =>
-      prev.map((a) =>
-        a.id === asignaturaId ? { ...a, profesor_id: profesorId } : a
-      )
-    );
-  };
-
-  const asignaturasFiltradas = cursoSeleccionado
-    ? asignaturas.filter((a) => a.curso_id === cursoSeleccionado)
-    : asignaturas;
+  const asignaturasFiltradas = asignaturas.filter(
+    (a) => cursoSeleccionado === "" || a.curso_id === cursoSeleccionado
+  );
 
   return (
-    <main className="p-6 space-y-4">
+    <div className="p-4">
       <a
         href="/admin"
         className="inline-block mb-4 bg-gray-100 border text-sm px-3 py-1 rounded hover:bg-gray-200"
@@ -80,14 +79,14 @@ export default function AsignarProfesor() {
         ← Volver al panel de administrador
       </a>
 
-      <h1 className="text-xl font-bold">Asignar Profesores a Asignaturas</h1>
+      <h1 className="text-2xl font-bold mb-4">Asignar profesores</h1>
 
-      <label className="block">
-        Filtrar por curso:
+      <div className="mb-4">
+        <label className="mr-2">Filtrar por curso:</label>
         <select
-          className="ml-2"
           value={cursoSeleccionado}
           onChange={(e) => setCursoSeleccionado(e.target.value)}
+          className="border px-2 py-1"
         >
           <option value="">Todos</option>
           {cursos.map((c) => (
@@ -96,42 +95,57 @@ export default function AsignarProfesor() {
             </option>
           ))}
         </select>
-        <button
-          onClick={actualizarLista}
-          className="ml-2 px-2 py-1 text-sm bg-blue-100 rounded hover:bg-blue-200"
-        >
-          Actualizar
-        </button>
-      </label>
 
-      <ul>
-        {asignaturasFiltradas.map((asig) => (
-          <li key={asig.id} className="mb-2">
-            <strong>{asig.nombre}</strong> ({asig.cursos?.nombre || "Sin curso"})
-            <select
-              className="ml-2"
-              value={asig.profesor_id || ""}
-              onChange={(e) => handleSeleccion(asig.id, e.target.value)}
-            >
-              <option value="">-- Seleccionar Profesor --</option>
-              {profesores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
-          </li>
-        ))}
-      </ul>
+        <button
+          className="ml-4 bg-blue-500 text-white px-3 py-1 rounded"
+          onClick={cargarDatos}
+        >
+          Actualizar datos
+        </button>
+      </div>
+
+      <table className="w-full border">
+        <thead>
+          <tr className="bg-gray-100 text-left">
+            <th className="p-2 border">Asignatura</th>
+            <th className="p-2 border">Curso</th>
+            <th className="p-2 border">Profesor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {asignaturasFiltradas.map((a) => {
+            const curso = cursos.find((c) => c.id === a.curso_id);
+            return (
+              <tr key={a.id}>
+                <td className="p-2 border">{a.nombre}</td>
+                <td className="p-2 border">{curso?.nombre || "Sin curso"}</td>
+                <td className="p-2 border">
+                  <select
+                    value={asignaciones[a.id] || ""}
+                    onChange={(e) => handleAsignar(a.id, e.target.value)}
+                    className="border px-2 py-1"
+                  >
+                    <option value="">Sin asignar</option>
+                    {profesores.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
       <button
         onClick={guardarCambios}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        className="mt-4 bg-green-600 text-white px-4 py-2 rounded"
+        disabled={guardando}
       >
-        Guardar Cambios
+        {guardando ? "Guardando..." : "Guardar cambios"}
       </button>
-
-      {mensaje && <p className="mt-2 text-sm">{mensaje}</p>}
-    </main>
+    </div>
   );
 }
