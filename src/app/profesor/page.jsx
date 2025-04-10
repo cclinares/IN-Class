@@ -16,7 +16,10 @@ export default function PanelProfesor() {
 
   useEffect(() => {
     const obtenerAsignaturas = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
       if (sessionError || !session?.user) {
         console.log("❌ No se pudo obtener el usuario:", sessionError);
@@ -27,15 +30,15 @@ export default function PanelProfesor() {
       const user = session.user;
       setUsuario(user);
 
-      const { data: asignaturas, error } = await supabase
+      const { data, error } = await supabase
         .from("asignaturas")
-        .select("id, nombre, curso_id (nombre)")
+        .select("id, nombre, curso:curso_id(nombre)")
         .eq("usuario_id", user.id);
 
       if (error) {
         console.error("❌ Error al obtener asignaturas:", error.message);
       } else {
-        setAsignaturas(asignaturas);
+        setAsignaturas(data);
       }
 
       setLoading(false);
@@ -59,7 +62,7 @@ export default function PanelProfesor() {
         <ul>
           {asignaturas.map((a) => (
             <li key={a.id}>
-              {a.nombre} ({a.curso_id?.nombre})
+              {a.nombre} ({a.curso?.nombre || "Sin curso"})
             </li>
           ))}
         </ul>
